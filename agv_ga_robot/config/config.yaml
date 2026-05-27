@@ -1,0 +1,47 @@
+GA_PARAMS:
+  population_size: 70         # Zmniejszone z 60
+  num_generations: 200          # Pełny training - daj czasem się nauczyć!
+  mutation_percent: 0.15         # 40% bitów zmutowanych - agresywna eksploracja aby unikać lokalnych optimów
+  crossover_type: "single_point"
+  parent_selection: "tournament"
+  tournament_size: 3
+  mutation_by_adaptation: true
+  fitness_evaluations: 1          # 1 ewaluacja - szybciej i bez szumów ze średniowania
+
+NETWORK_ARCH: [16, 64, 32, 2]    # Zwiększone - więcej zdolności reprezentacji
+
+REWARD_WEIGHTS:
+  # GŁÓWNE MOTYWACJE - postęp i osiągnięcia
+  checkpoint_reached: 10000       # Bazowa nagroda za CP (będzie mnożona: CP1=10k, CP2=20k, CP3=30k!)
+  distance_improvement: 300.0     # +300 za każdy pixel (GŁÓWNA MOTYWACJA!)
+  speed_bonus: 0.0                # USUNIĘTY
+  forward_bonus: 2.0              # +2 za prostą jazdę (bonus, nie wymóg)
+  progress_penalty: -10.0         # -10 za każdy krok bez postępu (DRUZGOCĄCY!)
+  
+  # KARY - rozsądne
+  stuck_penalty: -8.0             # -8 za stanie bez ruchu
+  idle_rotation_penalty: -1.0     # -1 za zbędne obroty
+  sharp_rotation_penalty: -0.2    # -0.2 za ostre obroty (mogą być konieczne)
+  collision_penalty: -20.0        # -20 za kolizję
+
+EPISODE_STEPS: 1000          # Normalnie 10000 - wystarczy czasu przy dobrym systemie nagród
+CHECKPOINT_MODE: "free"           # "free" lub "ordered"
+MAP: "maps/learning_maze_simple.json"  # Domyślna mapa
+CHECKPOINT_RADIUS: 40             # Promień strefy kontaktu
+
+ROBOT:
+  max_speed: 1.0                  # Maksymalna prędkość silnika
+  sensor_max_distance: 200        # Range raycastu (px)
+  sensor_angles: [-60, 0, 60]     # Kąty czujników (stopnie)
+  width: 30                       # Szerokość robota (px)
+  height: 20                      # Wysokość robota (px)
+  stuck_threshold: 0.05           # Prędkość poniżej tej wartości = stuck
+
+SIMULATION:
+  dt: 0.016                       # ~60 FPS
+  resolution: [1200, 800]
+
+# Tuning & Debugging
+VERBOSE: false
+SAVE_FREQUENCY: 10                # Zapisz best genome co N generacji
+SEED: 42                          # Opcjonalny seed dla reproducibility

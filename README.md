@@ -222,19 +222,31 @@ SENSOR:
 
 ## Visualization Features
 
-### 4-Window Layout
-- **Top-Left**: Leader (best genome from previous generation)
-- **Top-Right**: Rank 1 (best from current generation)
-- **Bottom-Left**: Rank 2
-- **Bottom-Right**: Rank 3
+### Single Window Layout (Pygame-based)
+- **Real-time 4-robot display**: Leader (green) + Top 3 from current generation (blue/cyan/magenta)
+- **Trajectories**: Lines showing each robot's path through the map
+- **Sensor visualization**: 3 distance sensor rays (-60°, 0°, +60°) from each robot
+- **Target arrow**: Direction indicator to next unvisited checkpoint
+
+### Legend and Stats Panel
+- **Generation info**: Current generation, best fitness, population average
+- **Reward breakdown**: Per-robot reward component breakdown showing:
+  - Checkpoint rewards (cumulative)
+  - Distance improvement bonus
+  - Forward movement bonus
+  - Collision penalties
+  - Idle rotation penalties
+  - Sharp rotation penalties
+  - Stuck penalties
 
 ### Display Elements
 - **Gray lines**: Obstacles
-- **White/gray lines**: Robot trajectory
-- **Green circle**: Current robot position
-- **Blue circles**: Unvisited checkpoints
+- **Colored lines**: Robot trajectories (green/blue/cyan/magenta)
+- **Colored circles**: Current robot positions
+- **Sensor rays**: Distance sensor readings (lighter shade of robot color)
+- **Target arrows**: Direction to next checkpoint
+- **Orange circles**: Unvisited checkpoints
 - **Green circles**: Visited checkpoints
-- **Text overlay**: Checkpoints reached, collisions, total reward, motor outputs
 
 ## Key Findings
 

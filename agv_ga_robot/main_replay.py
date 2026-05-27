@@ -15,7 +15,7 @@ from agv_ga_robot.maps.map_loader import MapLoader
 from agv_ga_robot.ga.ga_trainer import GATrainer
 from agv_ga_robot.env.agv_env import AGVEnvironment
 from agv_ga_robot.robot.neural_network import NeuralNetwork
-from agv_ga_robot.ui.visualization import Visualization
+from agv_ga_robot.ui.visualization_simple import SimpleVisualization
 
 
 
@@ -60,4 +60,25 @@ if __name__ == "__main__":
     print(f"[Replay] Checkpoints: {stats['checkpoints_visited']}")
     print(f"[Replay] Collisions: {stats['collision_count']}")
     print(f"[Replay] Reward: {stats['total_reward']:.0f}")
+    
+    # Visualize trajectory
+    try:
+        print("[Visualization] Displaying trajectory...")
+        viz = SimpleVisualization(map_data, config)
+        
+        # Display the trajectory (as leader)
+        viz.update_generation(0, stats['total_reward'], 0)
+        viz.update_episode(trajectory, stats, [], [])
+        
+        # Keep window open until user closes it
+        import pygame
+        clock = pygame.time.Clock()
+        running = True
+        while running:
+            running = viz.handle_events()
+            clock.tick(30)
+        
+        viz.close()
+    except Exception as e:
+        print(f"[Visualization Error] {e}")
 

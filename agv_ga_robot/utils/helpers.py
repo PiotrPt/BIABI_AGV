@@ -120,9 +120,32 @@ class EpisodeData:
         self.total_reward = 0.0
         self.steps = 0
         self.trajectory = []  # List of (x, y, angle) for visualization
+        
+        # Breakdown of reward components
+        self.reward_breakdown = {
+            'checkpoint_reached': 0.0,
+            'collision_penalty': 0.0,
+            'distance_improvement': 0.0,
+            'speed_bonus': 0.0,
+            'stuck_penalty': 0.0,
+            'forward_bonus': 0.0,
+            'idle_rotation_penalty': 0.0,
+            'sharp_rotation_penalty': 0.0,
+            'progress_penalty': 0.0,
+            'loitering_penalty': 0.0,
+            'no_action_penalty': 0.0,
+        }
+        
+        # Current robot state for visualization
+        self.robot_x = 0.0
+        self.robot_y = 0.0
+        self.robot_angle = 0.0
+        self.sensor_readings = [0.0, 0.0, 0.0]  # 3 distance sensors
+        self.target_checkpoint_idx = None  # Index of next target checkpoint
     
     def add_step(self, reward: float, x: float, y: float, angle: float, 
-                speed: float, stuck: bool):
+                speed: float, stuck: bool, reward_breakdown: Dict[str, float] = None,
+                sensor_readings: list = None, target_checkpoint: int = None):
         """Record a step in the episode."""
         self.total_reward += reward
         self.total_speed += speed
@@ -130,6 +153,25 @@ class EpisodeData:
         if stuck:
             self.stuck_count += 1
         self.trajectory.append((x, y, angle))
+        
+        # Update robot state for visualization (keep last values)
+        self.robot_x = x
+        self.robot_y = y
+        self.robot_angle = angle
+        
+        # Update sensor readings if provided
+        if sensor_readings is not None:
+            self.sensor_readings = sensor_readings
+        
+        # Update target checkpoint
+        if target_checkpoint is not None:
+            self.target_checkpoint_idx = target_checkpoint
+        
+        # Accumulate reward breakdown
+        if reward_breakdown:
+            for key, value in reward_breakdown.items():
+                if key in self.reward_breakdown:
+                    self.reward_breakdown[key] += value
     
     def get_summary(self) -> Dict[str, Any]:
         """Get episode summary."""
@@ -142,4 +184,10 @@ class EpisodeData:
             'total_reward': self.total_reward,
             'steps': self.steps,
             'avg_speed': self.total_speed / max(1, self.steps),
+            'reward_breakdown': self.reward_breakdown,
+            'robot_x': self.robot_x,
+            'robot_y': self.robot_y,
+            'robot_angle': self.robot_angle,
+            'sensor_readings': self.sensor_readings,
+            'target_checkpoint_idx': self.target_checkpoint_idx,
         }

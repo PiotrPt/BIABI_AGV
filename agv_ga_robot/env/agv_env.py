@@ -205,10 +205,13 @@ class AGVEnvironment(gym.Env):
     def _calculate_reward(self, collision: bool) -> float:
         """Calculate reward for this step."""
         reward = 0.0
+        reward_breakdown = {}
         
         # Collision penalty
         if collision:
-            reward += self.reward_weights['collision_penalty']
+            penalty = self.reward_weights['collision_penalty']
+            reward += penalty
+            reward_breakdown['collision_penalty'] = penalty
             self.episode_data.collision_count += 1
         
         # Checkpoint reward - każdy kolejny checkpoint wart coraz więcej!
@@ -223,12 +226,15 @@ class AGVEnvironment(gym.Env):
             checkpoint_multiplier = checkpoints_now  # checkpoints_now jest nową ilością
             checkpoint_reward = self.reward_weights['checkpoint_reached'] * checkpoint_multiplier
             reward += checkpoint_reward
+            reward_breakdown['checkpoint_reached'] = checkpoint_reward
             self.episode_data.checkpoints_visited = checkpoints_now  # Sync z rzeczywistością!
         
         # Distance improvement reward - główna motywacja do ruchu
         closest_dist = self._get_closest_unvisited_checkpoint_distance()
         distance_improvement = max(0, self.prev_closest_distance - closest_dist)
-        reward += self.reward_weights['distance_improvement'] * distance_improvement
+        dist_reward = self.reward_weights['distance_improvement'] * distance_improvement
+        reward += dist_reward
+        reward_breakdown['distance_improvement'] = dist_reward
         self.episode_data.total_distance_improvement += distance_improvement
         self.prev_closest_distance = closest_dist
         
@@ -238,16 +244,23 @@ class AGVEnvironment(gym.Env):
         else:
             self.steps_without_progress += 1
             if self.steps_without_progress > 50:  # No progress for 50+ steps - DRASTYCZNIE!
-                reward += self.reward_weights.get('progress_penalty', -25.0)
+                progress_penalty = self.reward_weights.get('progress_penalty', -25.0)
+                reward += progress_penalty
+                reward_breakdown['progress_penalty'] = progress_penalty
         
         # Speed bonus (removed/zeroed out - no reward for pointless movement)
         avg_speed = self.robot.get_average_speed()
-        reward += self.reward_weights.get('speed_bonus', 0.0) * avg_speed
+        speed_bonus = self.reward_weights.get('speed_bonus', 0.0) * avg_speed
+        reward += speed_bonus
+        if speed_bonus != 0:
+            reward_breakdown['speed_bonus'] = speed_bonus
         self.episode_data.total_speed += avg_speed
         
         # Stuck penalty
         if self.robot.is_stuck(self.stuck_threshold):
-            reward += self.reward_weights['stuck_penalty']
+            stuck_penalty = self.reward_weights['stuck_penalty']
+            reward += stuck_penalty
+            reward_breakdown['stuck_penalty'] = stuck_penalty
             self.episode_data.stuck_count += 1
         
         # Smart motor penalty/bonus logic
@@ -257,7 +270,9 @@ class AGVEnvironment(gym.Env):
         
         # Case 1: Robot stoi z całkowicie słabymi motorami = beznadziejny
         if avg_speed < 0.1 and abs(left_motor) < 0.2 and abs(right_motor) < 0.2:
-            reward -= 10.0  # Masywna kara za całkowity brak akcji
+            no_action_penalty = -10.0  # Masywna kara za całkowity brak akcji
+            reward += no_action_penalty
+            reward_breakdown['no_action_penalty'] = no_action_penalty
         
         # Case 2: Robot stoi ale wykonuje ostry zakręt (motor_diff > 0.7) = OK (potrzebny manewr)
         elif avg_speed < 0.1 and motor_diff > 0.7:
@@ -265,21 +280,30 @@ class AGVEnvironment(gym.Env):
         
         # Case 3: Robot stoi i NIE robi ostrych zakrętów = penalty
         elif avg_speed < 0.1 and motor_diff < 0.7:
-            reward -= 5.0  # Kara za stanie bez powodu
+            no_action_penalty = -5.0  # Kara za stanie bez powodu
+            reward += no_action_penalty
+            reward_breakdown['no_action_penalty'] = no_action_penalty
         
         # Case 4: Robot jedzie z minimalnymi obrotami (motor_diff < 0.15) = BONUS
         elif avg_speed > 0.1 and motor_diff < 0.15:
-            reward += self.reward_weights.get('forward_bonus', 4.0)  # Bonus za jazdę prawie prostą
+            forward_bonus = self.reward_weights.get('forward_bonus', 4.0)  # Bonus za jazdę prawie prostą
+            reward += forward_bonus
+            reward_breakdown['forward_bonus'] = forward_bonus
         
         # Case 5: Robot jedzie ale robi zbędne obroty (0.15 < motor_diff < 0.7) = DUŻA PENALTY
         elif avg_speed > 0.1 and 0.15 < motor_diff < 0.7:
-            reward += self.reward_weights.get('idle_rotation_penalty', -10.0)  # Drastycznie karamy zbędne obroty
+            idle_penalty = self.reward_weights.get('idle_rotation_penalty', -10.0)
+            reward += idle_penalty
+            reward_breakdown['idle_rotation_penalty'] = idle_penalty
         
         # Case 6: Robot jedzie i robi ostre obroty (motor_diff > 0.7) = mniejsza kara (mogą być konieczne)
         elif avg_speed > 0.1 and motor_diff > 0.7:
-            reward += self.reward_weights.get('sharp_rotation_penalty', -3.0)  # Łagodniejsza kara dla ostrych obrotów
+            sharp_penalty = self.reward_weights.get('sharp_rotation_penalty', -3.0)
+            reward += sharp_penalty
+            reward_breakdown['sharp_rotation_penalty'] = sharp_penalty
         
         # Loitering penalty: kara za stanięcie na odwiedzonym checkpoincie
+        loitering_penalty = 0.0
         if checkpoints_now > 0 and avg_speed < 0.1:
             for i, checkpoint in enumerate(self.checkpoints):
                 if self.visited_checkpoints[i]:
@@ -287,15 +311,33 @@ class AGVEnvironment(gym.Env):
                     dy = self.robot.y - checkpoint['y']
                     dist = math.sqrt(dx*dx + dy*dy)
                     if dist < self.checkpoint_radius * 1.5:
-                        reward -= 0.5
+                        loitering_penalty = -0.5
+                        reward += loitering_penalty
                         break
+        if loitering_penalty != 0:
+            reward_breakdown['loitering_penalty'] = loitering_penalty
+        
+        # Get sensor readings for visualization
+        sensor_readings = self.sensors.get_readings(
+            self.robot.x, self.robot.y, self.robot.angle_rad, self.obstacles
+        )
+        
+        # Get target checkpoint index
+        target_checkpoint_idx = None
+        for i, visited in enumerate(self.visited_checkpoints):
+            if not visited:
+                target_checkpoint_idx = i
+                break
         
         # Record step
         self.episode_data.add_step(
             reward,
             self.robot.x, self.robot.y, self.robot.angle_rad,
             avg_speed,
-            self.robot.is_stuck(self.stuck_threshold)
+            self.robot.is_stuck(self.stuck_threshold),
+            reward_breakdown=reward_breakdown,
+            sensor_readings=sensor_readings,
+            target_checkpoint=target_checkpoint_idx
         )
         
         return float(reward)

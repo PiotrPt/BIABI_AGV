@@ -1,10 +1,10 @@
 GA_PARAMS:
   population_size: 70         # Zmniejszone z 60
   num_generations: 200          # Pełny training - daj czasem się nauczyć!
-  mutation_percent: 0.15         # 40% bitów zmutowanych - agresywna eksploracja aby unikać lokalnych optimów
+  mutation_percent: 0.09         # 40% bitów zmutowanych - agresywna eksploracja aby unikać lokalnych optimów
   crossover_type: "single_point"
   parent_selection: "tournament"
-  tournament_size: 3
+  tournament_size: 5
   mutation_by_adaptation: true
   fitness_evaluations: 1          # 1 ewaluacja - szybciej i bez szumów ze średniowania
 
@@ -13,14 +13,14 @@ NETWORK_ARCH: [16, 64, 32, 2]    # Zwiększone - więcej zdolności reprezentacj
 REWARD_WEIGHTS:
   # GŁÓWNE MOTYWACJE - postęp i osiągnięcia
   checkpoint_reached: 10000       # Bazowa nagroda za CP (będzie mnożona: CP1=10k, CP2=20k, CP3=30k!)
-  distance_improvement: 300.0     # +300 za każdy pixel (GŁÓWNA MOTYWACJA!)
+  distance_improvement: 30.0     # +300 za każdy pixel (GŁÓWNA MOTYWACJA!)
   speed_bonus: 0.0                # USUNIĘTY
-  forward_bonus: 2.0              # +2 za prostą jazdę (bonus, nie wymóg)
-  progress_penalty: -10.0         # -10 za każdy krok bez postępu (DRUZGOCĄCY!)
+  forward_bonus: 30.0              # +2 za prostą jazdę (bonus, nie wymóg)
+  progress_penalty: -20.0         # -10 za każdy krok bez postępu (DRUZGOCĄCY!)
   
   # KARY - rozsądne
   stuck_penalty: -8.0             # -8 za stanie bez ruchu
-  idle_rotation_penalty: -1.0     # -1 za zbędne obroty
+  idle_rotation_penalty: -5.0     # -1 za zbędne obroty
   sharp_rotation_penalty: -0.2    # -0.2 za ostre obroty (mogą być konieczne)
   collision_penalty: -20.0        # -20 za kolizję
 

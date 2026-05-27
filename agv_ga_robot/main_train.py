@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agv_ga_robot.utils.helpers import load_config
 from agv_ga_robot.maps.map_loader import MapLoader
 from agv_ga_robot.ga.ga_trainer import GATrainer
-from agv_ga_robot.ui.visualization import Visualization
+from agv_ga_robot.ui.visualization_simple import SimpleVisualization
 
 
 if __name__ == "__main__":
@@ -42,8 +42,8 @@ if __name__ == "__main__":
     
     # Initialize visualization
     try:
-        viz = Visualization(map_data, config)
-        print("[Visualization] Ready")
+        viz = SimpleVisualization(map_data, config)
+        print("[Visualization] Ready (pygame-based)")
     except Exception as e:
         print(f"[Warning] No visualization: {e}")
         viz = None

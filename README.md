@@ -106,77 +106,54 @@ agv_ga_robot/
    - numpy==2.4.4
    - pyyaml
    - pygad==3.6.0
-   - pygame-ce (2.5.7+) - community edition with Python 3.14 support
+  - pygame-ce (2.5.7+) - community edition with Python 3.14 support
 
-## Usage
+## Commands
 
-**Important**: Always activate the virtual environment before running commands:
-```bash
-# On Windows:
+Run these common commands after activating the virtual environment. Paths are repository-relative.
+
+- Activate (Windows):
+```powershell
 .venv\Scripts\activate
-# On Linux/Mac:
+```
+
+- Activate (Linux/macOS):
+```bash
 source .venv/bin/activate
 ```
 
-### 1. Training with Visualization
-
-Run GA training with real-time 4-window visualization:
-
+- Install dependencies (recommended):
 ```bash
-python -m agv_ga_robot.main_train \
-    --config agv_ga_robot/config/config.yaml \
-    --map agv_ga_robot/maps/learning_maze_simple.json \
-    --output training_results
+pip install -r requirements.txt
+# or: pip install gymnasium numpy pyyaml pygad pygame-ce
 ```
 
-**Controls:**
-- Close window or press ESC to stop training
-- Results saved to `training_results/`
-
-### 2. Replay Trained Genome
-
-Visualize a trained genome's performance:
-
+- Train with visualization (default config/map):
 ```bash
-python -m agv_ga_robot.main_replay \
-    --config agv_ga_robot/config/config.yaml \
-    --map agv_ga_robot/maps/learning_maze_simple.json \
-    --genome training_results/best_genome.pkl
+python -m agv_ga_robot.main_train --config agv_ga_robot/config/config.yaml --map agv_ga_robot/maps/learning_maze_simple.json --output training_results
 ```
 
-### 3. Interactive Map Editor
-
-Create custom obstacle layouts:
-
+- Replay a trained genome (use `--genome` to pick a file):
 ```bash
-python -m agv_ga_robot.main_editor \
-    --config agv_ga_robot/config/config.yaml \
-    --output custom_map.json
+python -m agv_ga_robot.main_replay --genome training_results/best_genome_final.pkl --config agv_ga_robot/config/config.yaml --map agv_ga_robot/maps/learning_maze_simple.json
 ```
 
-**Controls:**
-- **Draw**: Draw obstacles by dragging mouse (LMB)
-- **CP**: Place checkpoints (click on canvas)
-- **Start**: Set robot start position (click on canvas)
-- **Undo**: Undo last action
-- **Clear**: Clear all elements
-- **Save**: Save map to JSON
-- **Load**: Load map from JSON
-- **Ctrl+Z**: Undo shortcut
-
-### 4. Run Tests
-
-Unit tests (Phase 1 - robot, sensors, NN, env):
+- Launch map editor:
 ```bash
-cd d:\BIAI2\agv_ga_robot
-d:\BIAI2\.venv\Scripts\python test_phase1.py
+python -m agv_ga_robot.main_editor --config agv_ga_robot/config/config.yaml --output custom_map.json
 ```
 
-Integration tests (Phase 2 - GA, training):
-```bash
-cd d:\BIAI2\agv_ga_robot
-d:\BIAI2\.venv\Scripts\python test_phase2.py
+- Run tests (from repo root):
+```powershell
+.venv\Scripts\python agv_ga_robot/test_phase1.py
+.venv\Scripts\python agv_ga_robot/test_phase2.py
 ```
+
+See `--help` on each entry point for extra flags (e.g., `--no-viz`).
+
+## Usage
+
+All operational commands are consolidated in the **Commands** section above. Activate the virtualenv and run the appropriate command from that list. Use `--help` on each script for additional flags and options.
 
 ## Configuration
 

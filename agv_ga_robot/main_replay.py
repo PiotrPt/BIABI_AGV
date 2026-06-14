@@ -21,19 +21,30 @@ from agv_ga_robot.ui.visualization_simple import SimpleVisualization
 
 
 if __name__ == "__main__":
-    config_path = "agv_ga_robot/config/config.yaml"
-    map_path = "agv_ga_robot/maps/learning_maze_simple.json"
-    genome_path = "training_results/best_genome.pkl"
-    
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Replay a trained genome")
+    parser.add_argument('--genome', '-g', default='training_results/best_genome_final.pkl',
+                        help='Path to genome pickle file')
+    parser.add_argument('--config', '-c', default='agv_ga_robot/config/config.yaml',
+                        help='Path to config YAML')
+    parser.add_argument('--map', '-m', default='agv_ga_robot/maps/learning_maze_simple.json',
+                        help='Path to map JSON')
+    args = parser.parse_args()
+
+    config_path = args.config
+    map_path = args.map
+    genome_path = args.genome
+
     if not os.path.exists(genome_path):
         print(f"[Error] Genome not found: {genome_path}")
         print("[Info] Run training first: python -m agv_ga_robot.main_train")
         sys.exit(1)
-    
+
     print("[Replay] Loading...")
     config = load_config(config_path)
     map_data = MapLoader.load_map(map_path)
-    
+
     # Load genome
     trainer = GATrainer(config, map_data)
     genome = trainer.load_genome(genome_path)

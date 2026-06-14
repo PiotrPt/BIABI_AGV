@@ -13,7 +13,7 @@
   },
   "checkpoints": [
     {
-      "x": 400,
+      "x": 450,
       "y": 400,
       "radius": 50,
       "order": 1,
@@ -27,7 +27,7 @@
       "id": "checkpoint_2"
     },
     {
-      "x": 600,
+      "x": 550,
       "y": 700,
       "radius": 50,
       "order": 3,

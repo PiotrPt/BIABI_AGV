@@ -225,7 +225,17 @@ class GATrainer:
         # Save best genome periodically
         save_freq = self.config.get('SAVE_FREQUENCY', 10)
         if gen % save_freq == 0:
-            self.save_best_genome(f"best_genome_gen{gen}.pkl")
+            # Prefer the confirmed best_genome, otherwise save the prev_best_genome from visualization
+            genome_to_save = None
+            if self.best_genome is not None:
+                genome_to_save = self.best_genome
+            elif hasattr(self, 'prev_best_genome') and self.prev_best_genome is not None:
+                genome_to_save = self.prev_best_genome
+
+            if genome_to_save is not None:
+                self.save_best_genome(f"best_genome_gen{gen}.pkl", genome=genome_to_save)
+            else:
+                print(f"[Warning] No genome available to save at generation {gen}")
     
     def train(self, verbose: bool = True) -> Tuple[np.ndarray, float]:
         """
@@ -282,24 +292,31 @@ class GATrainer:
         print(f"{'='*60}")
         print(f"Best Fitness: {self.best_fitness:.2f}")
         print(f"Generations: {len(self.generation_stats)}")
-        
+        # Save final best genome
+        try:
+            self.save_best_genome("best_genome_final.pkl")
+        except Exception:
+            pass
+
         return self.best_genome, self.best_fitness
     
-    def save_best_genome(self, filename: str) -> None:
+    def save_best_genome(self, filename: str, genome: np.ndarray = None) -> None:
         """
         Save best genome to file.
         
         Args:
             filename: Filename to save
         """
-        if self.best_genome is None:
-            print("[Warning] No best genome to save")
+        # Allow saving a provided genome (e.g., best from current generation) or fall back to stored best_genome
+        genome_to_write = genome if genome is not None else self.best_genome
+        if genome_to_write is None:
+            print("[Warning] No genome available to save")
             return
-        
+
         filepath = os.path.join(self.output_dir, filename)
         with open(filepath, 'wb') as f:
-            pickle.dump(self.best_genome, f)
-        print(f"[Saved] Best genome to {filepath}")
+            pickle.dump(genome_to_write, f)
+        print(f"[Saved] Genome to {filepath}")
     
     def load_genome(self, filepath: str) -> np.ndarray:
         """

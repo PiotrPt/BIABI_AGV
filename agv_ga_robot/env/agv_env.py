@@ -147,13 +147,24 @@ class AGVEnvironment(gym.Env):
         
         # Episode termination
         self.current_step += 1
-        terminated = collision or boundary_collision or self.current_step >= self.max_steps
-        truncated = self.current_step >= self.max_steps
+        all_checkpoints_visited = len(self.checkpoints) > 0 and sum(self.visited_checkpoints) == len(self.checkpoints)
+        timeout_failure = self.current_step >= self.max_steps and not all_checkpoints_visited
+
+        if timeout_failure:
+            timeout_penalty = self.reward_weights.get('timeout_penalty', -1000.0)
+            reward += timeout_penalty
+            # Record it only once at the end of the episode
+            self.episode_data.reward_breakdown['timeout_penalty'] = self.episode_data.reward_breakdown.get('timeout_penalty', 0.0) + timeout_penalty
+
+        terminated = collision or boundary_collision or all_checkpoints_visited or timeout_failure
+        truncated = self.current_step >= self.max_steps and not timeout_failure
         
         # Info
         info = {
             'collision': collision,
             'boundary_collision': boundary_collision,
+            'timeout_failure': timeout_failure,
+            'all_checkpoints_visited': all_checkpoints_visited,
             'checkpoints_visited': sum(self.visited_checkpoints),
             'step': self.current_step,
         }
@@ -268,37 +279,33 @@ class AGVEnvironment(gym.Env):
         right_motor = self.robot.right_speed
         motor_diff = abs(left_motor - right_motor)
         
-        # Case 1: Robot stoi z całkowicie słabymi motorami = beznadziejny
-        if avg_speed < 0.1 and abs(left_motor) < 0.2 and abs(right_motor) < 0.2:
-            no_action_penalty = -10.0  # Masywna kara za całkowity brak akcji
+        # Handle idle / movement-related bonuses & penalties
+        # Only apply a no-action penalty if the agent has shown no progress for a long time
+        if self.steps_without_progress > 100 and avg_speed < 0.05 and abs(left_motor) < 0.2 and abs(right_motor) < 0.2:
+            no_action_penalty = self.reward_weights.get('no_action_penalty', -1.0)
             reward += no_action_penalty
             reward_breakdown['no_action_penalty'] = no_action_penalty
-        
-        # Case 2: Robot stoi ale wykonuje ostry zakręt (motor_diff > 0.7) = OK (potrzebny manewr)
+        # If standing but performing an intentional in-place turn, allow it (no penalty)
         elif avg_speed < 0.1 and motor_diff > 0.7:
-            pass  # Dopuszczamy stanie jeśli robi ostry zakręt
-        
-        # Case 3: Robot stoi i NIE robi ostrych zakrętów = penalty
-        elif avg_speed < 0.1 and motor_diff < 0.7:
-            no_action_penalty = -5.0  # Kara za stanie bez powodu
-            reward += no_action_penalty
-            reward_breakdown['no_action_penalty'] = no_action_penalty
-        
-        # Case 4: Robot jedzie z minimalnymi obrotami (motor_diff < 0.15) = BONUS
-        elif avg_speed > 0.1 and motor_diff < 0.15:
-            forward_bonus = self.reward_weights.get('forward_bonus', 4.0)  # Bonus za jazdę prawie prostą
+            pass
+        # Small standing behavior that is not a turn: give a very small gentle penalty (discourage loafing)
+        elif avg_speed < 0.1 and motor_diff <= 0.7:
+            small_idle_pen = self.reward_weights.get('idle_rotation_penalty', -0.5) * 0.5
+            reward += small_idle_pen
+            reward_breakdown['idle_rotation_penalty'] = small_idle_pen
+        # Moving nearly straight → forward bonus
+        elif avg_speed >= 0.1 and motor_diff < 0.15:
+            forward_bonus = self.reward_weights.get('forward_bonus', 4.0)
             reward += forward_bonus
             reward_breakdown['forward_bonus'] = forward_bonus
-        
-        # Case 5: Robot jedzie ale robi zbędne obroty (0.15 < motor_diff < 0.7) = DUŻA PENALTY
-        elif avg_speed > 0.1 and 0.15 < motor_diff < 0.7:
-            idle_penalty = self.reward_weights.get('idle_rotation_penalty', -10.0)
+        # Moving with some rotation → small idle penalty using configured value
+        elif avg_speed >= 0.1 and 0.15 <= motor_diff < 0.7:
+            idle_penalty = self.reward_weights.get('idle_rotation_penalty', -0.5)
             reward += idle_penalty
             reward_breakdown['idle_rotation_penalty'] = idle_penalty
-        
-        # Case 6: Robot jedzie i robi ostre obroty (motor_diff > 0.7) = mniejsza kara (mogą być konieczne)
-        elif avg_speed > 0.1 and motor_diff > 0.7:
-            sharp_penalty = self.reward_weights.get('sharp_rotation_penalty', -3.0)
+        # Moving but making sharp turns → small sharp penalty (may be needed)
+        elif avg_speed >= 0.1 and motor_diff >= 0.7:
+            sharp_penalty = self.reward_weights.get('sharp_rotation_penalty', -0.05)
             reward += sharp_penalty
             reward_breakdown['sharp_rotation_penalty'] = sharp_penalty
         

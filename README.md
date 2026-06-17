@@ -7,8 +7,8 @@ Complete implementation of an Automated Guided Vehicle (AGV) trained with geneti
 This project combines:
 - **Robot Physics**: Differential drive kinematics, distance sensors, collision detection
 - **Genetic Algorithm**: PyGAD-based population-based optimization
-- **Neural Network**: Feedforward network (16→32→16→2) for motor control
-- **Real-time Visualization**: 4-window layout for training monitoring
+- **Neural Network**: Feedforward network (16→64→32→2) for motor control
+- **Real-time Visualization**: Single-window live display with overlayed trajectories
 - **Map Editor**: Interactive Pygame-based obstacle design
 
 ## Architecture
@@ -20,25 +20,37 @@ This project combines:
 - **Observation Space**: 16D vector containing sensor readings and checkpoint information
 
 ### Neural Network
-- **Architecture**: 16 → 32 → 16 → 2 (input → hidden1 → hidden2 → output)
+- **Architecture**: 16 → 64 → 32 → 2 (input → hidden1 → hidden2 → output)
 - **Activation**: Tanh (hidden + output layers)
-- **Parameters**: 1106 total (genome size for GA)
+- **Parameters**: ~1250 total (genome size for GA)
 - **Output**: Motor commands [left_motor, right_motor] in [-1, 1]
 
 ### Genetic Algorithm
-- **Population**: 60 individuals per generation
-- **Generations**: 100
-- **Selection**: Tournament (size 3)
+- **Population**: 180 individuals per generation
+- **Generations**: 250
+- **Selection**: Tournament (size 5)
 - **Crossover**: Single-point
-- **Mutation**: 15% per gene
-- **Fitness Evaluation**: Each genome evaluated 3 times with different seeds for stability
+- **Mutation**: 20% per gene
+- **Fitness Evaluation**: Each genome evaluated 1 time (single evaluation)
 
 ### Reward Function
 Multi-component reward encouraging checkpoint collection and obstacle avoidance:
 ```
-reward = 50×checkpoints_reached - 10×collisions + 0.5×distance_improvement 
-         + 0.1×avg_speed - 0.02×steps - 1.0×stuck_count
+reward = 15000×checkpoints_reached + 120×distance_improvement + 80×forward_bonus
+         + 0.5×speed_bonus - 30×collisions - 200×stuck - 10×(no_progress)
+         - 0.2×idle_rotation - 0.001×sharp_rotation - 3000×timeout
 ```
+
+Reward components:
+- **checkpoint_reached**: 15000 per checkpoint (higher multiplier for later checkpoints)
+- **distance_improvement**: 120 for each pixel closer to next checkpoint
+- **forward_bonus**: 80 when moving mostly straight
+- **collision_penalty**: -30 per collision
+- **progress_penalty**: -10 after 50 steps without progress
+- **stuck_penalty**: -200 when robot is immobile
+- **idle_rotation_penalty**: -0.2 for idle turning in place
+- **sharp_rotation_penalty**: -0.001 for sharp turns while moving
+- **timeout_penalty**: -3000 if episode timeout reached
 
 ### Observation Space (16D)
 ```
@@ -62,10 +74,10 @@ agv_ga_robot/
 ├── env/
 │   └── agv_env.py                  # Gymnasium-compliant environment
 ├── ga/
-│   ├── fitness.py                  # Multi-component reward calculation
+│   ├── fitness.py                  # Fitness calculation
 │   └── ga_trainer.py               # PyGAD wrapper
 ├── ui/
-│   ├── visualization.py            # Real-time 4-window display
+│   ├── visualization_simple.py      # Real-time single-window display
 │   └── map_editor.py               # Interactive obstacle editor
 ├── utils/
 │   ├── helpers.py                  # Config loading, normalization
@@ -130,26 +142,39 @@ pip install -r requirements.txt
 
 - Train with visualization (default config/map):
 ```bash
-python -m agv_ga_robot.main_train --config agv_ga_robot/config/config.yaml --map agv_ga_robot/maps/learning_maze_simple.json --output training_results
+python -m agv_ga_robot.main_train
 ```
 
-- Replay a trained genome (use `--genome` to pick a file):
+- Train with custom map:
 ```bash
-python -m agv_ga_robot.main_replay --genome training_results/best_genome_final.pkl --config agv_ga_robot/config/config.yaml --map agv_ga_robot/maps/learning_maze_simple.json
+python -m agv_ga_robot.main_train --map learning_maze_simple --config agv_ga_robot/config/config.yaml
+```
+
+- Train with custom population and generations:
+```bash
+python -m agv_ga_robot.main_train --map learning_maze_simple --population 80 --generations 150
+```
+
+- Replay a trained genome (automatically finds latest):
+```bash
+python -m agv_ga_robot.main_replay
+```
+
+- Replay specific genome:
+```bash
+python -m agv_ga_robot.main_replay --genome training_results_final/best_genome_final_0.pkl --map learning_maze_simple
 ```
 
 - Launch map editor:
 ```bash
-python -m agv_ga_robot.main_editor --config agv_ga_robot/config/config.yaml --output custom_map.json
+python -m agv_ga_robot.main_editor
 ```
 
 - Run tests (from repo root):
-```powershell
-.venv\Scripts\python agv_ga_robot/test_phase1.py
-.venv\Scripts\python agv_ga_robot/test_phase2.py
+```bash
+python agv_ga_robot/test_phase1.py
+python agv_ga_robot/test_phase2.py
 ```
-
-See `--help` on each entry point for extra flags (e.g., `--no-viz`).
 
 ## Usage
 
@@ -161,60 +186,60 @@ All parameters are in `config/config.yaml`:
 
 ```yaml
 GA_PARAMS:
-  population_size: 60
-  num_generations: 100
-  mutation_percent: 0.15
-  fitness_evaluations: 3
+  population_size: 180
+  num_generations: 250
+  mutation_percent: 0.20
+  fitness_evaluations: 1
   crossover_type: single_point
   parent_selection: tournament
-  tournament_size: 3
+  tournament_size: 5
 
-NETWORK_ARCH: [16, 32, 16, 2]
+NETWORK_ARCH: [16, 64, 32, 2]
 
 REWARD_WEIGHTS:
-  checkpoint_reached: 50
-  collision_penalty: -10
-  distance_improvement: 0.5
-  speed_bonus: 0.1
-  time_penalty: -0.02
-  stuck_penalty: -1.0
+  checkpoint_reached: 15000
+  distance_improvement: 120.0
+  forward_bonus: 80.0
+  collision_penalty: -30.0
+  progress_penalty: -10.0
+  stuck_penalty: -200.0
+  idle_rotation_penalty: -0.2
+  sharp_rotation_penalty: -0.001
+  timeout_penalty: -3000.0
+  speed_bonus: 0.5
 
-EPISODE_STEPS: 2500
+EPISODE_STEPS: 500
 
 ROBOT:
-  width: 20
+  width: 30
   height: 20
   max_speed: 1.0
-  axle_distance: 15
+  stuck_threshold: 0.05
+  sensor_angles: [-60, 0, 60]
+  sensor_max_distance: 50
 
 SIMULATION:
   dt: 0.016
 
+CHECKPOINT_MODE: "ordered"
 CHECKPOINT_RADIUS: 50
-
-SENSOR:
-  angles: [-60, 0, 60]
-  max_distance: 200
 ```
 
 ## Visualization Features
 
-### Single Window Layout (Pygame-based)
-- **Real-time 4-robot display**: Leader (green) + Top 3 from current generation (blue/cyan/magenta)
+### Single Window Display (Pygame-based)
+- **Real-time multi-robot display**: Leader (green) + Top 3 from current generation (blue/cyan/magenta)
 - **Trajectories**: Lines showing each robot's path through the map
 - **Sensor visualization**: 3 distance sensor rays (-60°, 0°, +60°) from each robot
 - **Target arrow**: Direction indicator to next unvisited checkpoint
 
-### Legend and Stats Panel
-- **Generation info**: Current generation, best fitness, population average
-- **Reward breakdown**: Per-robot reward component breakdown showing:
-  - Checkpoint rewards (cumulative)
-  - Distance improvement bonus
-  - Forward movement bonus
-  - Collision penalties
-  - Idle rotation penalties
-  - Sharp rotation penalties
-  - Stuck penalties
+### Legend and Generation Info
+- **Generation stats**: Current generation, best fitness, population average fitness
+- **Trajectory colors**: 
+  - Green = Leader (best from previous generation)
+  - Blue = Rank 1 (best from current generation)
+  - Cyan = Rank 2 (2nd best from current generation)  
+  - Magenta = Rank 3 (3rd best from current generation)
 
 ### Display Elements
 - **Gray lines**: Obstacles
@@ -245,17 +270,19 @@ Single evaluation per genome allows "lucky" genomes. Solution: **3× evaluation*
 
 ## Training Performance
 
-Typical GA training (100 gen × 60 pop):
-- **Generation 1**: Best fitness ~100-200
-- **Generation 50**: Best fitness ~500-800
-- **Generation 100**: Best fitness ~1000+
-- **Total time**: ~2-4 hours (depends on hardware, episode length)
+Typical GA training (250 gen × 180 pop):
+- **Generation 1**: Best fitness ~190000-200000
+- **Generation 50**: Best fitness ~210000-220000
+- **Generation 100**: Best fitness ~220000-240000
+- **Generation 250**: Best fitness ~240000+
+- **Total time**: ~3-6 hours (depends on hardware, episode length)
 
 Successfully trained robots exhibit:
 - Navigation through complex mazes
 - Checkpoint collection in order
 - Obstacle avoidance
 - Efficient path planning
+- Forward-biased movement (reduced idle spinning)
 
 ## Extending the System
 

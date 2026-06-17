@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "name": "90 Degree Turns Maze",
+    "width": 1200,
+    "height": 800,
+    "version": "1.0",
+    "description": "Maze with sharp 90-degree turns requiring precise navigation and angle changes"
+  },
+  "robot": {
+    "start_x": 100,
+    "start_y": 100,
+    "start_angle": 0
+  },
+  "checkpoints": [
+    {
+      "x": 425,
+      "y": 217,
+      "radius": 50,
+      "order": 1,
+      "id": "checkpoint_1"
+    },
+    {
+      "x": 810,
+      "y": 560,
+      "radius": 50,
+      "order": 2,
+      "id": "checkpoint_2"
+    },
+    {
+      "x": 760,
+      "y": 270,
+      "radius": 50,
+      "order": 3,
+      "id": "checkpoint_3"
+    }
+  ],
+  "obstacles": [
+    {
+      "type": "line",
+      "points": [
+        [50, 150],
+        [350, 150],
+        [350, 300],
+        [500, 300]
+      ],
+      "width": 18,
+      "id": "wall_1"
+    },
+    {
+      "type": "line",
+      "points": [
+        [500, 200],
+        [500, 500],
+        [150, 500]
+      ],
+      "width": 18,
+      "id": "wall_2"
+    },
+    {
+      "type": "line",
+      "points": [
+        [600, 150],
+        [850, 150],
+        [850, 350],
+        [700, 350]
+      ],
+      "width": 18,
+      "id": "wall_3"
+    },
+    {
+      "type": "line",
+      "points": [
+        [700, 450],
+        [700, 650],
+        [350, 650]
+      ],
+      "width": 18,
+      "id": "wall_4"
+    },
+    {
+      "type": "line",
+      "points": [
+        [950, 200],
+        [1050, 200]
+      ],
+      "width": 18,
+      "id": "wall_5"
+    },
+    {
+      "type": "line",
+      "points": [
+        [50, 50],
+        [1150, 50],
+        [1150, 750],
+        [50, 750]
+      ],
+      "width": 15,
+      "id": "boundary"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "metadata": {
+    "name": "Winding Corridors Maze",
+    "width": 1200,
+    "height": 800,
+    "version": "1.0",
+    "description": "Maze with long, winding corridors requiring continuous navigation without dead-ends"
+  },
+  "robot": {
+    "start_x": 100,
+    "start_y": 400,
+    "start_angle": 90
+  },
+  "checkpoints": [
+    {
+      "x": 345,
+      "y": 160,
+      "radius": 50,
+      "order": 1,
+      "id": "checkpoint_1"
+    },
+    {
+      "x": 700,
+      "y": 500,
+      "radius": 50,
+      "order": 2,
+      "id": "checkpoint_2"
+    },
+    {
+      "x": 1050,
+      "y": 260,
+      "radius": 50,
+      "order": 3,
+      "id": "checkpoint_3"
+    }
+  ],
+  "obstacles": [
+    {
+      "type": "line",
+      "points": [
+        [250, 360],
+        [250, 800]
+      ],
+      "width": 20,
+      "id": "wall_1"
+    },
+    {
+      "type": "line",
+      "points": [
+        [400, 0],
+        [400, 345]
+      ],
+      "width": 20,
+      "id": "wall_2"
+    },
+    {
+      "type": "line",
+      "points": [
+        [600, 0],
+        [600, 300]
+      ],
+      "width": 20,
+      "id": "wall_3"
+    },
+        {
+      "type": "line",
+      "points": [
+        [520, 410],
+        [520, 640]
+      ],
+      "width": 20,
+      "id": "wall_6"
+    },
+    {
+      "type": "line",
+      "points": [
+        [800, 400],
+        [800, 800]
+
+      ],
+      "width": 20,
+      "id": "wall_4"
+    },
+    {
+      "type": "line",
+      "points": [
+        [950, 200],
+        [950, 350],
+        [1050, 350],
+        [1050, 800]
+      ],
+      "width": 20,
+      "id": "wall_5"
+    }
+  ]
+}

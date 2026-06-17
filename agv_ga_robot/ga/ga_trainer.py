@@ -16,20 +16,24 @@ class GATrainer:
     """Wrapper around PyGAD for training AGV robot."""
     
     def __init__(self, config: Dict[str, Any], map_data: Dict[str, Any], 
-                 output_dir: str = "results", visualization=None):
+                 output_dir: str = "results", final_output_dir: str = "training_results_final",
+                 visualization=None):
         """
         Initialize GA trainer.
         
         Args:
             config: Configuration dictionary
             map_data: Map data for environment
-            output_dir: Directory to save results
+            output_dir: Directory to save generation-based results (best_genome_gen*.pkl)
+            final_output_dir: Directory to save final indexed results (best_genome_final_*.pkl)
             visualization: Optional Visualization object for real-time display
         """
         self.config = config
         self.map_data = map_data
         self.output_dir = output_dir
+        self.final_output_dir = final_output_dir
         os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(final_output_dir, exist_ok=True)
         self.visualization = visualization
         
         # Extract GA parameters
@@ -300,20 +304,56 @@ class GATrainer:
 
         return self.best_genome, self.best_fitness
     
+    def _find_next_final_index(self) -> int:
+        """
+        Find next index for final genome file.
+        Searches for best_genome_final_*.pkl files and returns max_index + 1.
+        
+        Returns:
+            Next index for final genome filename
+        """
+        import re
+        max_idx = 0
+        try:
+            for fname in os.listdir(self.final_output_dir):
+                match = re.match(r'best_genome_final_(\d+)\.pkl', fname)
+                if match:
+                    idx = int(match.group(1))
+                    max_idx = max(max_idx, idx)
+        except FileNotFoundError:
+            pass
+        return max_idx + 1
+    
     def save_best_genome(self, filename: str, genome: np.ndarray = None) -> None:
         """
         Save best genome to file.
         
+        Smart saving:
+        - If filename contains 'gen': save to output_dir, overwrites previous gen file
+        - If filename contains 'final': save to final_output_dir with auto-increment index
+        
         Args:
-            filename: Filename to save
+            filename: Filename to save (e.g. 'best_genome_gen10.pkl' or 'best_genome_final.pkl')
+            genome: Optional genome to save (defaults to self.best_genome)
         """
         # Allow saving a provided genome (e.g., best from current generation) or fall back to stored best_genome
         genome_to_write = genome if genome is not None else self.best_genome
         if genome_to_write is None:
             print("[Warning] No genome available to save")
             return
-
-        filepath = os.path.join(self.output_dir, filename)
+        
+        # Determine output directory and filename based on pattern
+        if 'final' in filename.lower():
+            # Final genome - save with auto-increment index
+            next_idx = self._find_next_final_index()
+            # Extract basename without .pkl
+            base = filename.replace('.pkl', '')
+            final_filename = f"{base}_{next_idx}.pkl"
+            filepath = os.path.join(self.final_output_dir, final_filename)
+        else:
+            # Generation genome - save to output_dir (will overwrite)
+            filepath = os.path.join(self.output_dir, filename)
+        
         with open(filepath, 'wb') as f:
             pickle.dump(genome_to_write, f)
         print(f"[Saved] Genome to {filepath}")

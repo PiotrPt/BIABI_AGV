@@ -1,14 +1,18 @@
 """
-Main map editor launcher script.
+Map editor - DISABLED
+
+The map editor functionality has been disabled in this version.
+Maps are now predefined as JSON files in agv_ga_robot/maps/:
+  - learning_maze_simple.json
+  - learning_maze_winding.json
+  - learning_maze_90deg.json
+
+To add new maps, create JSON files following the same structure as existing maps.
+Map structure: metadata, robot, checkpoints, obstacles
+
+To train or replay robots, use: python main.py
 """
 
-import sys
-from pathlib import Path
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from agv_ga_robot.ui.map_editor import main
-
 if __name__ == "__main__":
-    main()
+    print(__doc__)
+

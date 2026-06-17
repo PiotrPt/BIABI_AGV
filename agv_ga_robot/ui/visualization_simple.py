@@ -62,6 +62,7 @@ class SimpleVisualization:
         self.font_small = pygame.font.Font(None, 14)
         self.font_medium = pygame.font.Font(None, 18)
         self.font_large = pygame.font.Font(None, 24)
+        self.font_tiny = pygame.font.Font(None, 11)
         
         # Map dimensions
         self.map_width = map_data['metadata'].get('canvas_width') or map_data['metadata'].get('width', 1200)
@@ -90,6 +91,13 @@ class SimpleVisualization:
         # Current stats
         self.leader_stats = {}
         self.top3_stats = [{}, {}, {}]
+        
+        # Animation state
+        self.animation_mode = False
+        self.animation_trajectory = []
+        self.animation_current_step = 0
+        self.animation_robot_angles = []
+        self.animation_stats = {}
         
     def map_to_screen(self, map_x: float, map_y: float) -> Tuple[int, int]:
         """Convert map coordinates to screen coordinates."""
@@ -433,6 +441,104 @@ class SimpleVisualization:
                 y += line_height
                 if y > self.window_height - 20:  # Stop if we run out of space
                     break
+    
+    def draw_animated_trajectory(self, 
+                                 trajectory: List[Tuple[float, float]],
+                                 robot_angles: List[float],
+                                 stats: Dict,
+                                 playback_speed: float = 1.0) -> bool:
+        """
+        Draw trajectory animation step-by-step (realtime playback).
+        
+        Args:
+            trajectory: Full trajectory as list of (x, y) tuples
+            robot_angles: Robot angle at each step in radians
+            stats: Episode statistics
+            playback_speed: Speed multiplier (1.0 = normal, 2.0 = 2x faster)
+        
+        Returns:
+            True to continue animation, False to stop (user closed window)
+        """
+        import math
+        
+        # Initialize animation if not already done
+        if not self.animation_mode:
+            self.animation_mode = True
+            self.animation_trajectory = trajectory
+            self.animation_robot_angles = robot_angles if robot_angles else [0.0] * len(trajectory)
+            self.animation_stats = stats
+            self.animation_current_step = 0
+        
+        # Check events
+        if not self.handle_events():
+            return False
+        
+        # Increment step based on playback speed
+        self.animation_current_step += playback_speed
+        
+        # Clamp to trajectory length
+        if self.animation_current_step >= len(trajectory):
+            self.animation_current_step = len(trajectory) - 1
+        
+        current_idx = int(self.animation_current_step)
+        
+        # Draw background
+        self.display.fill(self.COLOR_BG)
+        self.draw_map()
+        
+        # Draw animated trajectory (only up to current step)
+        if current_idx > 0:
+            animated_traj = trajectory[:current_idx+1]
+            for i in range(len(animated_traj) - 1):
+                p1 = self.map_to_screen(animated_traj[i][0], animated_traj[i][1])
+                p2 = self.map_to_screen(animated_traj[i+1][0], animated_traj[i+1][1])
+                pygame.draw.line(self.display, self.COLOR_LEADER, p1, p2, 2)
+        
+        # Draw robot at current position with direction arrow
+        if current_idx < len(trajectory):
+            robot_pos = trajectory[current_idx]
+            robot_angle = self.animation_robot_angles[current_idx] if current_idx < len(self.animation_robot_angles) else 0.0
+            
+            screen_pos = self.map_to_screen(robot_pos[0], robot_pos[1])
+            
+            # Draw robot circle
+            pygame.draw.circle(self.display, self.COLOR_LEADER, screen_pos, 8)
+            
+            # Draw direction arrow
+            arrow_length = 15
+            arrow_end_x = robot_pos[0] + arrow_length * math.cos(robot_angle)
+            arrow_end_y = robot_pos[1] + arrow_length * math.sin(robot_angle)
+            arrow_end_screen = self.map_to_screen(arrow_end_x, arrow_end_y)
+            
+            pygame.draw.line(self.display, (100, 255, 100), screen_pos, arrow_end_screen, 3)
+        
+        # Draw info panel
+        info_y = self.padding + self.canvas_height + 10
+        
+        # Progress
+        progress_pct = (current_idx / len(trajectory) * 100) if trajectory else 0
+        progress_text = f"Step: {current_idx} / {len(trajectory)} ({progress_pct:.1f}%) | Reward: {stats.get('total_reward', 0):.0f}"
+        progress_surf = self.font_large.render(progress_text, True, self.COLOR_HEADER)
+        self.display.blit(progress_surf, (self.padding, info_y))
+        
+        # Statistics
+        info_y += 30
+        checkpoint_count = stats.get('checkpoints_visited', 0)
+        collision_count = stats.get('collision_count', 0)
+        stats_text = f"Checkpoints: {checkpoint_count} | Collisions: {collision_count}"
+        stats_surf = self.font_small.render(stats_text, True, self.COLOR_TEXT)
+        self.display.blit(stats_surf, (self.padding, info_y))
+        
+        # Help text
+        help_text = "Press ESC or Q to stop"
+        help_surf = self.font_tiny.render(help_text, True, (150, 150, 150))
+        self.display.blit(help_surf, (self.window_width - 250, self.window_height - 25))
+        
+        pygame.display.flip()
+        self.clock.tick(30)  # 30 FPS
+        
+        # Return True if animation not finished
+        return current_idx < len(trajectory) - 1
     
     def handle_events(self) -> bool:
         """

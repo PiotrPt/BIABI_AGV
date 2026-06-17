@@ -1,3 +1,12 @@
+MAPS_AVAILABLE:
+  - "learning_maze_simple"
+  - "learning_maze_winding"
+  - "learning_maze_90deg"
+
+TRAIN_PARAMS:
+  default_population_size: 180
+  default_num_generations: 250
+
 GA_PARAMS:
   population_size: 180      
   num_generations: 250         
